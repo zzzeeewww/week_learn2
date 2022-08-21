@@ -1,0 +1,444 @@
+#include<opencv2\opencv.hpp>
+#include<iostream>
+#include<quickopencv.h>
+
+  
+
+using namespace cv;
+using namespace std;
+  class QuickDemo {
+public:
+void inrange_deno(Mat& image);//图像色彩空间转换
+	void pixel_statistic_demo(Mat& image);//图像像素最大值，最小值，平均值统计
+	void drawing_demo(Mat& image);//图像绘制
+	void random_drawing();//随即绘制图形
+	void polyline_drawing_demo();//多边形绘制与填充
+	void mouse_drowing_demo(Mat& image);//鼠标操作与响应绘制图像
+	void resize_demo(Mat& image);//对图像进行缩放
+	void flip_demo(Mat& image);//图像翻转
+	void video_demo();//视频文件的读取&打开摄像头
+	void strange_mat_demo(Mat& image);//画直方图   
+	void juanji_demo(Mat& image);//运用均值卷积核
+	void copyMakeBorder(Mat& image);//边缘填充
+	void gaosi_demo(Mat& image);//高斯模糊
+	void judge_demo(Mat& image);//自定义滤波-均值滤波
+	void non_judge_demo(Mat & image);//非均值滤波
+	void tidu_demo(Mat& image);//图像梯度
+	void laplacian_demo(Mat& image);//拉普拉斯算子
+	void unsharpen_mask(Mat& image);//USM锐化
+	void noise_demo(Mat& image);//噪声的形成
+	void mwdia_demo(Mat& image);//中值滤波
+	void find_color(Mat& image);//基于颜色的对象追踪
+	void find_red_blue();//找出红色和蓝色方块
+};
+void QuickDemo::inrange_deno(Mat& image)
+{
+	Mat hsv;
+	cvtColor(image, hsv, COLOR_BGR2HSV);
+	Mat mask;
+   	inRange(hsv, Scalar(35,43,46), Scalar(77,255,255), mask);
+	imshow("mask", mask); 
+}
+
+void QuickDemo::pixel_statistic_demo(Mat& image)
+{
+	double minv, maxv;
+	Point minloc, maxloc;//最小值，最大值的地址
+	std::vector<Mat>mv;
+	split(image, mv);
+	for (int i = 0; i < mv.size(); i++)
+	{
+		minMaxLoc(mv[i], &minv, &maxv, &minloc, &maxloc, Mat());
+		std::cout <<"no channels:"<<i << "min value:" << minv << "max value:" << maxv << std::endl;
+	}
+	/*minMaxLoc(image, &minv, &maxv, &minloc,&maxloc,Mat());
+	std::cout << "min value:" << minv << "max value:" << maxv << std::endl;*/
+	Mat mean, stddev;
+	meanStdDev(image, mean, stddev);//求均值，方差
+	std::cout << "means:" << mean << "stddev:" << stddev << std::endl;
+
+
+}
+
+void QuickDemo::drawing_demo(Mat& image)
+{
+	Rect rect;//矩形
+	rect.x = 100;
+	rect.y = 100;
+	rect.width = 200;
+	rect.height = 200;
+	rectangle(image, rect, Scalar(0, 0, 255), -1, 8, 0);//绘制矩形 -1代表填充
+	circle(image, Point(300, 300), 15, Scalar(255, 0, 0), 2, 8, 0);//绘制圆形
+	line(image, Point(100, 100), Point(300, 300), Scalar(0, 255, 0), 2, 8, 0);//绘制线
+	RotatedRect rrt;
+	rrt.size = Size(100, 200);
+	rrt.center = Point(100, 100);
+	rrt.angle = 90.0;
+	ellipse(image, rrt, Scalar(0, 255, 255), 2, 8);//绘制椭圆
+	imshow("绘制矩形", image);
+}
+
+void QuickDemo::random_drawing()
+{
+	Mat canvas = Mat::zeros(Size(512, 512), CV_8UC3);
+	int w = canvas.cols;
+	int h = canvas.rows;
+	RNG rng(12345);//产生随机数
+	while (true)
+	{
+		int c = waitKey(10);
+		if (c == 27)
+		{
+			break;
+		}
+		int x1 = rng.uniform(0, w);
+		int y1 = rng.uniform(0, h);
+		int x2 = rng.uniform(0, w);
+		int y2 = rng.uniform(0, h);
+		//canvas = Scalar(0, 0, 0);
+		line(canvas, Point(x1, y1), Point(x2, y2), Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255)), 1, LINE_AA, 0);
+		imshow("随机绘制演示",canvas);
+
+	}
+
+}
+void QuickDemo::polyline_drawing_demo()
+{
+	Mat canvas = Mat::zeros(Size(512, 512), CV_8UC3);
+	Point p1(100, 100);
+	Point p2(350, 100);
+	Point p3(450, 280);
+	Point p4(320, 450);
+	Point p5(80, 400);
+	std::vector<Point>pts;
+	pts.push_back(p1);
+	pts.push_back(p2);
+	pts.push_back(p3);
+	pts.push_back(p4);
+	pts.push_back(p5);
+	//fillPoly(canvas, pts, Scalar(255, 255, 0), 8, 0);//填充
+	//polylines(canvas, pts, true, Scalar(0, 0, 255), 2, LINE_AA, 0);//不能进行填充
+	std::vector<std::vector<Point>>contours;
+	contours.push_back(pts);
+	drawContours(canvas, contours, 0, Scalar(0, 255, 0),-1);//第三个参数代表绘制第几个多边形
+	imshow("多边形绘制",canvas);
+
+}
+
+
+
+
+
+
+Point sp(-1, -1);
+Point ep(-1, -1);
+Mat temp;
+static void on_draw(int event, int x, int y, int flags, void* userdata)//event鼠标事件，
+{
+	Mat image = *((Mat*)userdata);
+	if (event == EVENT_LBUTTONDOWN)
+	{
+		sp.x = x;
+		sp.y = y;
+		std::cout << "start point:" << sp << std::endl;
+
+	}
+	else if (event == EVENT_LBUTTONUP)
+	{
+		ep.x = x;
+		ep.y = y;
+		int dx = ep.x - sp.x;
+		int dy = ep.y - sp.y;
+		if (dx > 0 && dy > 0)
+		{
+			Rect box(sp.x, sp.y, dx, dy);
+			temp.copyTo(image);
+			imshow("roi区域", image(box));
+			rectangle(image, box, Scalar(0, 0, 255), 2, 8, 0);
+			imshow("鼠标绘制", image);
+			//为下一次绘制
+			sp.x = -1;
+			sp.y = -1;
+		}
+	}
+	else if (event == EVENT_MOUSEMOVE)
+	{
+		if (sp.x > 0 && sp.y > 0) {
+			ep.x = x;
+			ep.y = y;
+			int dx = ep.x - sp.x;
+			int dy = ep.y - sp.y;
+			if (dx > 0 && dy > 0)
+			{
+
+				Rect box(sp.x, sp.y, dx, dy);
+				temp.copyTo(image);
+				rectangle(image, box, Scalar(0, 0, 255), 2, 8, 0);
+				imshow("鼠标绘制", image);
+			}
+		}
+	}
+}
+
+
+void QuickDemo::mouse_drowing_demo(Mat& image)
+{
+	namedWindow("鼠标绘制",WINDOW_AUTOSIZE);
+	setMouseCallback("鼠标绘制",on_draw,(void*)(&image));
+	imshow("鼠标绘制", image);
+	temp = image.clone();
+}
+
+
+
+void QuickDemo::resize_demo(Mat& image)
+{
+	Mat zoomin, zoomout;
+	int h=image.rows;
+	int w = image.cols;
+	resize(image,zoomin,Size(w/2,h/2),0,0,INTER_LINEAR);
+	imshow("zoomin", zoomin);
+	resize(image, zoomout, Size(w * 1.5, h *1.5), 0, 0, INTER_LINEAR);
+	imshow("zoomout", zoomout);
+	
+}
+void QuickDemo::flip_demo(Mat& image)
+{
+	Mat dst;
+	//flip( image,dst, 0);//上下翻转
+	flip(image, dst, 1);//左右翻转
+	//flip(image, dst, -1);//180翻转
+	imshow("图像翻转",dst);
+}
+
+
+void QuickDemo::video_demo()
+{
+	VideoCapture capture(0);//0换成视频文件地址可播放文件
+	int frame_width = capture.get(CAP_PROP_FRAME_WIDTH);//获取宽
+	int frame_height = capture.get(CAP_PROP_FRAME_HEIGHT);//获取高
+	int count = capture.get(CAP_PROP_FRAME_COUNT);
+	double fps = capture.get(CAP_PROP_FPS);//获取帧数
+	std::cout << "frame width:" << frame_width << std::endl;
+	std::cout << "frame height:" << frame_height << std::endl;
+	std::cout << "fps:" << fps << std::endl;
+	std::cout << "number of frames" << count << std::endl;
+	VideoWriter writer("D://test.mp4", capture.get(CAP_PROP_FOURCC),fps,Size(frame_width,frame_height),true);//视频保存。
+	Mat frame;
+	while (true)
+	{
+		capture.read(frame);
+		flip(frame, frame, 1);
+		if (frame.empty())
+		{
+			break;
+		}
+		imshow("frame", frame);
+		colorSpace_Demo(frame);
+		writer.write(frame);
+		int c = waitKey(10);
+		if (c == 27)
+		{
+			break;
+		}
+	}
+	capture.release();
+	writer.release();
+
+}
+
+
+
+void QuickDemo::strange_mat_demo(Mat& image)
+{
+	std::vector<Mat>mv;
+	split(image, mv);
+	int histSize = 256;
+	Mat b_hist, g_hist, r_hist;
+	float range[] = { 0,255 };
+	const float* histRanges{ range };
+	calcHist(&mv[0], 1, 0, Mat(), b_hist, 1, &histSize, &histRanges, true, false);
+	calcHist(&mv[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRanges, true, false);
+	calcHist(&mv[2], 1, 0, Mat(), r_hist, 1, &histSize, &histRanges, true, false);
+	Mat result = Mat::zeros(Size(600, 400), CV_8UC3);
+	int margin = 50;
+	int nm = result.rows - 2 * margin;
+	//int h = result.rows;
+	normalize(b_hist, b_hist, 0, nm, NORM_MINMAX, -1, Mat());
+	normalize(g_hist, g_hist, 0, nm, NORM_MINMAX, -1, Mat());
+	normalize(r_hist, r_hist, 0, nm, NORM_MINMAX, -1, Mat());
+	float step = 500.0 / 256.0;
+	for (int i = 0; i < 255; i++)
+	{
+		/*float bh = b_hist.at<float>(i, 0);
+		float bh = b_hist.at<float>(i + 1, 0);*/
+		line(result, Point(step * i, 50 + (nm - b_hist.at<float>(i, 0))), Point(step * (i + 1), 50 + (nm - b_hist.at<float>(i + 1, 0))), Scalar(255, 0, 0), 2, 8, 0);
+		line(result, Point(step * i, 50 + (nm - g_hist.at<float>(i, 0))), Point(step * (i + 1), 50 + (nm - g_hist.at<float>(i + 1, 0))), Scalar(0, 255, 0), 2, 8, 0);
+		line(result, Point(step * i, 50 + (nm - r_hist.at<float>(i, 0))), Point(step * (i + 1), 50 + (nm - r_hist.at<float>(i + 1, 0))), Scalar(0, 0, 255), 2, 8, 0);
+	}
+	imshow("histgrom_demo", result);
+}
+
+
+void QuickDemo::juanji_demo(Mat& image)
+{
+	int h = image.rows;
+	int w = image.cols;
+	Mat result = image.clone();
+	for (int row = 1; row < h-1; row++)
+	{
+		for (int col = 1; col < w-1; col++)
+		{
+			//3*3卷积核
+			int sb = image.at<Vec3b>(row, col)[0] + image.at<Vec3b>(row - 1, col - 1)[0] + image.at<Vec3b>(row - 1, col)[0] +
+				image.at<Vec3b>(row - 1, col + 1)[0] + image.at<Vec3b>(row, col + 1)[0] +image.at<Vec3b>(row,col-1)[0]+
+				image.at<Vec3b>(row + 1, col - 1)[0] + image.at<Vec3b>(row + 1, col)[0] + image.at<Vec3b>(row + 1, col +1)[0];
+
+			int sg= image.at<Vec3b>(row, col)[1] + image.at<Vec3b>(row - 1, col - 1)[1] + image.at<Vec3b>(row - 1, col)[1] +
+				image.at<Vec3b>(row - 1, col + 1)[1] + image.at<Vec3b>(row, col + 1)[1] + image.at<Vec3b>(row, col - 1)[1]+
+				image.at<Vec3b>(row + 1, col - 1)[1] + image.at<Vec3b>(row + 1, col)[1] + image.at<Vec3b>(row + 1, col + 1)[1];
+
+			int sr= image.at<Vec3b>(row, col)[2] + image.at<Vec3b>(row - 1, col - 1)[2] + image.at<Vec3b>(row - 1, col)[2] +
+				image.at<Vec3b>(row - 1, col + 1)[2] + image.at<Vec3b>(row, col + 1)[2] + image.at<Vec3b>(row, col - 1)[2]+
+				image.at<Vec3b>(row + 1, col - 1)[2] + image.at<Vec3b>(row + 1, col)[2] + image.at<Vec3b>(row + 1, col + 1)[2];
+
+			result.at<Vec3b>(row, col)[0] = sb / 9;
+			result.at<Vec3b>(row, col)[1] = sg / 9;
+			result.at<Vec3b>(row, col)[2] = sr / 9;
+
+
+		}
+
+	}
+	imshow("conv_demo", result);
+	Mat dst;
+	blur(image, dst, Size(13,13), Point(-1, -1), BORDER_DEFAULT);
+	imshow("blur-demo", dst);
+
+
+}
+
+
+
+void QuickDemo::copyMakeBorder(Mat& image)
+{
+	int border = 8;
+	Mat border_m;
+//   	copyMakeBorder(image, border_m,border,border, border, border, BORDER_DEFAULT);
+	imshow("border fill demo", border_m);
+     
+}
+
+
+
+void QuickDemo::gaosi_demo(Mat& image)
+{
+	Mat dst;
+	GaussianBlur(image, dst, Size(0,0), 15);
+	imshow("gaosi blur", dst);
+}
+
+
+void QuickDemo::judge_demo(Mat& image)
+{
+	int k = 15;
+	Mat mkernel = Mat::ones(k, k, CV_32F) / (float)(k * k);
+	Mat dst;
+	filter2D(image, dst, -1, mkernel, Point(-1, -1), 0, BORDER_DEFAULT);
+	imshow("judege-filter-demo", dst);
+}
+
+
+void QuickDemo::non_judge_demo(Mat& image)
+{
+	int k = 15;
+	Mat result;
+	Mat robot = (Mat_<int>(2, 2) << 1, 0, 0, -1);
+	filter2D(image, result, CV_32F, robot, Point(-1, -1), 127, BORDER_DEFAULT);
+	convertScaleAbs(result, result);
+	imshow("robot filter", result);
+}
+
+
+
+void QuickDemo::tidu_demo(Mat& image)
+{
+	//robot算子
+	int k = 15;
+	Mat result;
+	Mat robot_x= (Mat_<int>(2, 2) << 1, 0, 0, -1);
+	Mat robot_y = (Mat_<int>(2, 2) << 1, 0, 0, -1);
+	Mat grad_x, grad_y;
+	filter2D(image, grad_x, CV_32F, robot_x, Point(-1, -1), 0, BORDER_DEFAULT);
+	filter2D(image, grad_y, CV_32F, robot_y, Point(-1, -1), 0, BORDER_DEFAULT);
+	convertScaleAbs(grad_x, grad_x);
+	convertScaleAbs(grad_y, grad_y);
+	add(grad_x, grad_y, result);
+
+	imshow("robot grandient", result);
+	//Sobel算子
+	Sobel(image, grad_x, CV_32F, 1, 0);
+	Sobel(image, grad_y, CV_32F, 0, 1);
+	convertScaleAbs(grad_x, grad_x);
+	convertScaleAbs(grad_y, grad_y);
+	Mat result2;
+	Mat result3;
+	add(grad_x, grad_y, result2);
+	addWeighted(grad_x, 0.5, grad_y, 0.5, 0, result3);
+	imshow("Sobel gradient", result2);
+	imshow("Sobel gradient2", result3);
+	//scharr算子
+	Scharr(image, grad_x, CV_32F, 1, 0);
+	Scharr(image, grad_y, CV_32F, 0, 1);
+	convertScaleAbs(grad_x, grad_x);
+	convertScaleAbs(grad_y, grad_y);
+	Mat result4;
+	Mat result5;
+	add(grad_x, grad_y, result2);
+	addWeighted(grad_x, 0.5, grad_y, 0.5, 0, result3);
+	imshow("Scharr gradient3", result2);
+	imshow("Scharr gradient4", result3);
+
+}
+
+
+
+void QuickDemo::laplacian_demo(Mat& image)
+{
+	Mat dst;
+	Laplacian(image, dst, CV_16S, 3, 1, 0);
+	convertScaleAbs(dst, dst);
+	imshow("Laplaction", dst);
+	//锐化
+	Mat sh_op = (Mat_<int>(3, 3) << 0, -1, 0,
+		-1, 5, -1,
+		0, -1, 0);
+	Mat result;
+	filter2D(image, result, CV_32F, sh_op, Point(-1, -1), 0, BORDER_DEFAULT);
+	convertScaleAbs(result, result);
+	imshow("sharpen filter", result);
+
+
+}
+
+
+void QuickDemo::unsharpen_mask(Mat& image)
+{
+	Mat dst, blur, result;
+	GaussianBlur(image, dst, Size(3, 3), 0);
+	Laplacian(image, blur, -1, 1, 1.0, 0, BORDER_DEFAULT);
+	addWeighted(dst, 1.0, blur, -1.0, 0, result);
+	imshow("usm_sharpen", result);
+}
+
+
+int main(int arg,char** argv)
+{
+	Mat src = imread("D:\\open\\opencv\\sources\\samples\\wp8\\OpenCVXaml\\OpenCVXaml\\Assets\\Lena.png");                            
+	imshow("input", src);
+		QuickDemo qd;
+	qd.mwdia_demo(src);
+		waitKey(0);
+	destroyAllWindows();
+	return 0;
+}
